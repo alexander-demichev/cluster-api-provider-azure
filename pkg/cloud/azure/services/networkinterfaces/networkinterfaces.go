@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-06-01/network"
+	"github.com/Azure/azure-sdk-for-go/profiles/2019-03-01/network/mgmt/network"
 	"github.com/Azure/go-autorest/autorest/to"
 	"k8s.io/klog/v2"
 	utilnet "k8s.io/utils/net"
@@ -144,31 +144,20 @@ func (s *Service) CreateOrUpdate(ctx context.Context, spec azure.Spec) error {
 		loadBalancerInboundNatRules := []network.InboundNatRule{}
 		loadBalancerInboundNatRulesV6 := []network.InboundNatRule{}
 		// loadbalancers can have multiple frontends and backends with different IP families
-		for i, ipConfig := range *lb.FrontendIPConfigurations {
+		for i, _ := range *lb.FrontendIPConfigurations {
 			// iterate only for the frontends that have backends configured
 			if i >= len(*lb.BackendAddressPools) {
 				break
 			}
-			if ipConfig.PrivateIPAddressVersion == network.IPv6 {
-				backendAddressPoolsV6 = append(backendAddressPoolsV6,
-					network.BackendAddressPool{
-						ID: (*lb.BackendAddressPools)[i].ID,
-					})
-			} else {
-				backendAddressPools = append(backendAddressPools,
-					network.BackendAddressPool{
-						ID: (*lb.BackendAddressPools)[i].ID,
-					})
-			}
+
+			backendAddressPools = append(backendAddressPools,
+				network.BackendAddressPool{
+					ID: (*lb.BackendAddressPools)[i].ID,
+				})
 
 			if nicSpec.NatRule != nil {
-				if ipConfig.PrivateIPAddressVersion == network.IPv6 {
-					loadBalancerInboundNatRulesV6 = append(loadBalancerInboundNatRulesV6,
-						network.InboundNatRule{ID: (*lb.InboundNatRules)[*nicSpec.NatRule].ID})
-				} else {
-					loadBalancerInboundNatRules = append(loadBalancerInboundNatRules,
-						network.InboundNatRule{ID: (*lb.InboundNatRules)[*nicSpec.NatRule].ID})
-				}
+				loadBalancerInboundNatRules = append(loadBalancerInboundNatRules,
+					network.InboundNatRule{ID: (*lb.InboundNatRules)[*nicSpec.NatRule].ID})
 			}
 		}
 
@@ -189,22 +178,16 @@ func (s *Service) CreateOrUpdate(ctx context.Context, spec azure.Spec) error {
 			return errors.New("internal load balancer get returned invalid network interface")
 		}
 		// loadbalancers can have multiple frontends and backends with different IP families
-		for i, ipConfig := range *internallb.FrontendIPConfigurations {
+		for i, _ := range *internallb.FrontendIPConfigurations {
 			// iterate only for the frontends that have backends configured
 			if i >= len(*internallb.BackendAddressPools) {
 				break
 			}
-			if ipConfig.PrivateIPAddressVersion == network.IPv6 {
-				backendAddressPoolsV6 = append(backendAddressPoolsV6,
-					network.BackendAddressPool{
-						ID: (*internallb.BackendAddressPools)[i].ID,
-					})
-			} else {
-				backendAddressPools = append(backendAddressPools,
-					network.BackendAddressPool{
-						ID: (*internallb.BackendAddressPools)[i].ID,
-					})
-			}
+
+			backendAddressPools = append(backendAddressPools,
+				network.BackendAddressPool{
+					ID: (*internallb.BackendAddressPools)[i].ID,
+				})
 		}
 	}
 	nicConfig.LoadBalancerBackendAddressPools = &backendAddressPools
@@ -324,10 +307,6 @@ func subnetHasIPv6(subnet network.Subnet) bool {
 
 	if subnet.AddressPrefix != nil {
 		prefixes = append(prefixes, *subnet.AddressPrefix)
-	}
-
-	if subnet.AddressPrefixes != nil {
-		prefixes = append(prefixes, *subnet.AddressPrefixes...)
 	}
 
 	for _, prefix := range prefixes {

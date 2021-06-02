@@ -24,8 +24,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-30/compute"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-06-01/network"
+	"github.com/Azure/azure-sdk-for-go/profiles/2019-03-01/compute/mgmt/compute"
+	"github.com/Azure/azure-sdk-for-go/profiles/2019-03-01/network/mgmt/network"
 	"github.com/Azure/go-autorest/autorest/to"
 	"golang.org/x/crypto/ssh"
 	"k8s.io/klog/v2"
@@ -74,9 +74,6 @@ type Spec struct {
 	CustomData      string
 	ManagedIdentity string
 	Tags            map[string]string
-	Priority        compute.VirtualMachinePriorityTypes
-	EvictionPolicy  compute.VirtualMachineEvictionPolicyTypes
-	BillingProfile  *compute.BillingProfile
 	SecurityProfile *v1beta1.SecurityProfile
 }
 
@@ -225,18 +222,6 @@ func deriveVirtualMachineParameters(vmSpec *Spec, location string, subscription 
 		}
 	}
 
-	var diskEncryptionSet *compute.DiskEncryptionSetParameters
-	if vmSpec.OSDisk.ManagedDisk.DiskEncryptionSet != nil {
-		diskEncryptionSet = &compute.DiskEncryptionSetParameters{ID: to.StringPtr(vmSpec.OSDisk.ManagedDisk.DiskEncryptionSet.ID)}
-	}
-
-	var securityProfile *compute.SecurityProfile
-	if vmSpec.SecurityProfile != nil {
-		securityProfile = &compute.SecurityProfile{
-			EncryptionAtHost: vmSpec.SecurityProfile.EncryptionAtHost,
-		}
-	}
-
 	virtualMachine := &compute.VirtualMachine{
 		Location: to.StringPtr(location),
 		Tags:     getTagListFromSpec(vmSpec),
@@ -253,12 +238,10 @@ func deriveVirtualMachineParameters(vmSpec *Spec, location string, subscription 
 					DiskSizeGB:   to.Int32Ptr(vmSpec.OSDisk.DiskSizeGB),
 					ManagedDisk: &compute.ManagedDiskParameters{
 						StorageAccountType: compute.StorageAccountTypes(vmSpec.OSDisk.ManagedDisk.StorageAccountType),
-						DiskEncryptionSet:  diskEncryptionSet,
 					},
 				},
 			},
-			SecurityProfile: securityProfile,
-			OsProfile:       osProfile,
+			OsProfile: osProfile,
 			NetworkProfile: &compute.NetworkProfile{
 				NetworkInterfaces: &[]compute.NetworkInterfaceReference{
 					{
@@ -269,19 +252,7 @@ func deriveVirtualMachineParameters(vmSpec *Spec, location string, subscription 
 					},
 				},
 			},
-			Priority:       vmSpec.Priority,
-			EvictionPolicy: vmSpec.EvictionPolicy,
-			BillingProfile: vmSpec.BillingProfile,
 		},
-	}
-
-	if vmSpec.ManagedIdentity != "" {
-		virtualMachine.Identity = &compute.VirtualMachineIdentity{
-			Type: compute.ResourceIdentityTypeUserAssigned,
-			UserAssignedIdentities: map[string]*compute.VirtualMachineIdentityUserAssignedIdentitiesValue{
-				vmSpec.ManagedIdentity: &compute.VirtualMachineIdentityUserAssignedIdentitiesValue{},
-			},
-		}
 	}
 
 	if vmSpec.Zone != "" {
@@ -311,7 +282,7 @@ func (s *Service) Delete(ctx context.Context, spec azure.Spec) error {
 		return errors.New("invalid vm Specification")
 	}
 	klog.V(2).Infof("deleting vm %s ", vmSpec.Name)
-	future, err := s.Client.Delete(ctx, s.Scope.MachineConfig.ResourceGroup, vmSpec.Name, nil)
+	future, err := s.Client.Delete(ctx, s.Scope.MachineConfig.ResourceGroup, vmSpec.Name)
 	if err != nil && azure.ResourceNotFound(err) {
 		// already deleted
 		return nil

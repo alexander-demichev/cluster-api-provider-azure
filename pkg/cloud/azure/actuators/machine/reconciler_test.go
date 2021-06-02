@@ -2,11 +2,10 @@ package machine
 
 import (
 	"context"
-	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-30/compute"
+	"github.com/Azure/azure-sdk-for-go/profiles/2019-03-01/compute/mgmt/compute"
 	. "github.com/onsi/gomega"
 	machinev1 "github.com/openshift/machine-api-operator/pkg/apis/machine/v1beta1"
 	machinecontroller "github.com/openshift/machine-api-operator/pkg/controller/machine"
@@ -68,99 +67,9 @@ func TestExists(t *testing.T) {
 	}
 }
 
-func TestGetSpotVMOptions(t *testing.T) {
-	maxPriceString := "100"
-	maxPriceFloat, err := strconv.ParseFloat(maxPriceString, 64)
-	if err != nil {
-		t.Fatal(err)
-	}
-	maxPriceEmpty := ""
-
-	testCases := []struct {
-		name           string
-		spotVMOptions  *v1beta1.SpotVMOptions
-		priority       compute.VirtualMachinePriorityTypes
-		evictionPolicy compute.VirtualMachineEvictionPolicyTypes
-		billingProfile *compute.BillingProfile
-	}{
-		{
-			name: "get spot vm option succefully",
-			spotVMOptions: &v1beta1.SpotVMOptions{
-				MaxPrice: &maxPriceString,
-			},
-			priority:       compute.Spot,
-			evictionPolicy: compute.Deallocate,
-			billingProfile: &compute.BillingProfile{
-				MaxPrice: &maxPriceFloat,
-			},
-		},
-		{
-			name:           "return empty values on missing options",
-			spotVMOptions:  nil,
-			priority:       "",
-			evictionPolicy: "",
-			billingProfile: nil,
-		},
-		{
-			name: "not return an error if the max price is the empty string",
-			spotVMOptions: &v1beta1.SpotVMOptions{
-				MaxPrice: &maxPriceEmpty,
-			},
-			priority:       compute.Spot,
-			evictionPolicy: compute.Deallocate,
-			billingProfile: &compute.BillingProfile{
-				MaxPrice: nil,
-			},
-		},
-		{
-			name: "not return an error if the max price is nil",
-			spotVMOptions: &v1beta1.SpotVMOptions{
-				MaxPrice: nil,
-			},
-			priority:       compute.Spot,
-			evictionPolicy: compute.Deallocate,
-			billingProfile: &compute.BillingProfile{
-				MaxPrice: nil,
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			priority, evictionPolicy, billingProfile, err := getSpotVMOptions(tc.spotVMOptions)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if priority != tc.priority {
-				t.Fatalf("Expected priority %s, got: %s", priority, tc.priority)
-			}
-
-			if evictionPolicy != tc.evictionPolicy {
-				t.Fatalf("Expected eviction policy %s, got: %s", evictionPolicy, tc.evictionPolicy)
-			}
-
-			// only check billing profile when spotVMOptions object is not nil
-			if tc.spotVMOptions != nil {
-				if tc.billingProfile.MaxPrice != nil {
-					if billingProfile == nil {
-						t.Fatal("Expected billing profile to not be nil")
-					} else if *billingProfile.MaxPrice != *tc.billingProfile.MaxPrice {
-						t.Fatalf("Expected billing profile max price %d, got: %d", billingProfile, tc.billingProfile)
-					}
-				}
-			} else {
-				if billingProfile != nil {
-					t.Fatal("Expected billing profile to be nil")
-				}
-			}
-		})
-	}
-}
-
 func TestSetMachineCloudProviderSpecifics(t *testing.T) {
 	testStatus := "testState"
-	testSize := compute.VirtualMachineSizeTypesBasicA4
+	testSize := compute.BasicA4
 	testRegion := "testRegion"
 	testZone := "testZone"
 	testZones := []string{testZone}

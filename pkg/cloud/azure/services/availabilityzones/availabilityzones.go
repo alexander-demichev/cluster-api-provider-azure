@@ -19,7 +19,6 @@ package availabilityzones
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 
 	"sigs.k8s.io/cluster-api-provider-azure/pkg/cloud/azure"
@@ -32,23 +31,22 @@ type Spec struct {
 
 // Get provides information about a availability zones.
 func (s *Service) Get(ctx context.Context, spec azure.Spec) (interface{}, error) {
-	var zones []string
+	zones := []string{}
 	skusSpec, ok := spec.(*Spec)
 	if !ok {
 		return zones, errors.New("invalid availability zones specification")
 	}
 
-	filter := fmt.Sprintf("location eq '%s'", s.Scope.Location())
-	res, err := s.Client.List(ctx, filter)
+	res, err := s.Client.List(ctx)
 	if err != nil {
 		return zones, err
 	}
 
 	for _, resSku := range res.Values() {
 		if strings.EqualFold(*resSku.Name, skusSpec.VMSize) {
-			for _, locationInfo := range *resSku.LocationInfo {
-				if strings.EqualFold(*locationInfo.Location, s.Scope.MachineConfig.Location) {
-					zones = *locationInfo.Zones
+			for _, locationInfo := range *resSku.Locations {
+				if strings.EqualFold(locationInfo, s.Scope.MachineConfig.Location) {
+					zones = append(zones, locationInfo)
 				}
 			}
 		}

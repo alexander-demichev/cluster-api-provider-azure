@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-06-01/network"
+	"github.com/Azure/azure-sdk-for-go/profiles/2019-03-01/network/mgmt/network"
 	"github.com/Azure/go-autorest/autorest/to"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/cluster-api-provider-azure/pkg/cloud/azure"
@@ -116,7 +116,7 @@ func (s *Service) CreateOrUpdate(ctx context.Context, spec azure.Spec) error {
 							BackendPort:          to.Int32Ptr(6443),
 							IdleTimeoutInMinutes: to.Int32Ptr(4),
 							EnableFloatingIP:     to.BoolPtr(false),
-							LoadDistribution:     network.LoadDistributionDefault,
+							LoadDistribution:     network.Default,
 							FrontendIPConfiguration: &network.SubResource{
 								ID: to.StringPtr(fmt.Sprintf("/%s/%s/frontendIPConfigurations/%s", idPrefix, lbName, frontEndIPConfigName)),
 							},

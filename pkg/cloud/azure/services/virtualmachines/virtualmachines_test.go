@@ -5,10 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	. "github.com/onsi/gomega"
-
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-30/compute"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-06-01/network"
+	"github.com/Azure/azure-sdk-for-go/profiles/2019-03-01/network/mgmt/network"
 	"github.com/Azure/go-autorest/autorest/to"
 	"sigs.k8s.io/cluster-api-provider-azure/pkg/apis/azureprovider/v1beta1"
 )
@@ -45,70 +42,6 @@ func TestGetTagListFromSpec(t *testing.T) {
 	}
 }
 
-func TestDeriveVirtualMachineParameters(t *testing.T) {
-	testCases := []struct {
-		name       string
-		updateSpec func(*Spec)
-		validate   func(*WithT, *compute.VirtualMachine)
-	}{
-		{
-			name:       "Unspecified security profile",
-			updateSpec: nil,
-			validate: func(g *WithT, vm *compute.VirtualMachine) {
-				g.Expect(vm.SecurityProfile).To(BeNil())
-			},
-		},
-		{
-			name: "Security profile with EncryptionAtHost set to true",
-			updateSpec: func(vmSpec *Spec) {
-				vmSpec.SecurityProfile = &v1beta1.SecurityProfile{EncryptionAtHost: to.BoolPtr(true)}
-			},
-			validate: func(g *WithT, vm *compute.VirtualMachine) {
-				g.Expect(vm.SecurityProfile).ToNot(BeNil())
-				g.Expect(vm.SecurityProfile.EncryptionAtHost).ToNot(BeNil())
-				g.Expect(*vm.SecurityProfile.EncryptionAtHost).To(BeTrue())
-			},
-		},
-		{
-			name: "Security profile with EncryptionAtHost set to false",
-			updateSpec: func(vmSpec *Spec) {
-				vmSpec.SecurityProfile = &v1beta1.SecurityProfile{EncryptionAtHost: to.BoolPtr(false)}
-			},
-			validate: func(g *WithT, vm *compute.VirtualMachine) {
-				g.Expect(vm.SecurityProfile).ToNot(BeNil())
-				g.Expect(vm.SecurityProfile.EncryptionAtHost).ToNot(BeNil())
-				g.Expect(*vm.SecurityProfile.EncryptionAtHost).To(BeFalse())
-			},
-		},
-		{
-			name: "Security profile with EncryptionAtHost unset",
-			updateSpec: func(vmSpec *Spec) {
-				vmSpec.SecurityProfile = &v1beta1.SecurityProfile{EncryptionAtHost: nil}
-			},
-			validate: func(g *WithT, vm *compute.VirtualMachine) {
-				g.Expect(vm.SecurityProfile).ToNot(BeNil())
-				g.Expect(vm.SecurityProfile.EncryptionAtHost).To(BeNil())
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			g := NewGomegaWithT(t)
-			vmSpec := getTestVMSpec(tc.updateSpec)
-			subscription := "226e02ba-43d1-43d3-a02a-19e584a4ef67"
-			resourcegroup := "foobar"
-			location := "eastus"
-			nic := getTestNic(vmSpec, subscription, resourcegroup, location)
-
-			vm, err := deriveVirtualMachineParameters(vmSpec, location, subscription, nic)
-
-			g.Expect(err).ToNot(HaveOccurred())
-			tc.validate(g, vm)
-		})
-	}
-}
-
 func getTestNic(vmSpec *Spec, subscription, resourcegroup, location string) network.Interface {
 	return network.Interface{
 		Etag:     to.StringPtr("foobar"),
@@ -140,9 +73,6 @@ func getTestVMSpec(updateSpec func(*Spec)) *Spec {
 		CustomData:      "",
 		ManagedIdentity: "",
 		Tags:            map[string]string{},
-		Priority:        compute.Regular,
-		EvictionPolicy:  compute.Delete,
-		BillingProfile:  nil,
 		SecurityProfile: nil,
 	}
 

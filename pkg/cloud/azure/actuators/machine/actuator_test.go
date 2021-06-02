@@ -25,7 +25,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-30/compute"
+	"github.com/Azure/azure-sdk-for-go/profiles/2019-03-01/compute/mgmt/compute"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/ghodss/yaml"
@@ -680,7 +680,8 @@ func TestMachineEvents(t *testing.T) {
 				VirtualMachineProperties: &compute.VirtualMachineProperties{
 					ProvisioningState: pointer.StringPtr("Succeeded"),
 					HardwareProfile: &compute.HardwareProfile{
-						VMSize: compute.VirtualMachineSizeTypesStandardB2ms,
+						// VMSize: compute.StandardB2ms,
+						VMSize: compute.StandardA0,
 					},
 					OsProfile: &compute.OSProfile{
 						ComputerName: pointer.StringPtr("vm-name"),
